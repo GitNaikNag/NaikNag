@@ -27,12 +27,43 @@ jobs:
         run: |
           mkdir -p test-results
           npm test -- --reporter mocha-junit-reporter --reporter-options mochaFile=./test-results/results.xml
-
-
-         # Publish Test Results
-      - name: Publish Test Results
+ 
+      - name: publish test results
         if: always()
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: test-results-artifact
+          name: test-results-artifact        
           path: test-results/results.xml
+ 
+      - name: run code quality using eslint
+        run: |
+          set -o pipefail
+          npx eslint . --ext .js --exit-on-fatal-error -f stylish | tee lint-report.txt
+ 
+      - name: publish eslint code quality tests
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: eslint-code-quality-artifact        
+          path: lint-report.txt
+ 
+      - name: run dependency scanning
+        run: npm audit --audit-level=high --json > npm-audit-report.json
+ 
+      - name: publish dependency scanning tests
+        if: always()
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: dependency-scanning-artifact        
+          path: npm-audit-report.json
+      - name: build docker file
+        run: docker build -t my-node-app .
+      - name: Install Trivy
+        run: |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sudo sh
+          sudo mv ./bin/trivy /usr/local/bin/
+          trivy --version
+      - name: scan docker image
+        run: trivy image --exit-code 1 --severity HIGH,CRITICAL my-node-app
+      - name: run test inside docker
+        run: docker run --rm my-node-app npm test
