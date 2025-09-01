@@ -1,4 +1,4 @@
-retname: CI Pipeline with Security & Quality Scans
+name: CI Pipeline with Security & Quality Scans
  
 on:
   push:
